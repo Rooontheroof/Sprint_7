@@ -1,19 +1,10 @@
 import pytest
 import allure
 import requests
-from helpers import BASE_URL
+from constants import BASE_URL
 
 
-ORDER_BASE = {
-    "firstName": "Naruto",
-    "lastName": "Uchiha",
-    "address": "Коноха, д. 142",
-    "metroStation": 4,
-    "phone": "+7 800 355 35 35",
-    "rentTime": 5,
-    "deliveryDate": "2040-06-06",
-    "comment": "Саске, вернись"
-}
+from order_data import ORDER_BASE
 
 
 @allure.suite('Создание заказа')

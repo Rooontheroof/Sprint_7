@@ -1,102 +1,126 @@
-from urllib import response
-
 import pytest
 import allure
 import requests
-from helpers import BASE_URL, register_new_courier_and_return_login_password, login_courier, delete_courier
+from helpers import generate_random_string, login_courier, delete_courier
+from constants import BASE_URL
+
+
+LOGIN_URL = f"{BASE_URL}/api/v1/courier/login"
+CREATE_URL = f"{BASE_URL}/api/v1/courier"
+ERROR_MESSAGE = 'Недостаточно данных для входа'
+
+
+@pytest.fixture
+def registered_courier():
+    payload = {
+        "login": generate_random_string(10),
+        "password": generate_random_string(10),
+        "firstName": generate_random_string(10)
+    }
+
+    requests.post(CREATE_URL, json=payload)
+
+    yield payload
+
+    courier_id = login_courier(payload["login"], payload["password"])
+    if courier_id:
+        delete_courier(courier_id)
 
 
 @allure.suite('Логин курьера')
 class TestLoginCourier:
 
-    @allure.title('Курьер может авторизоваться — код 200')
-    def test_courier_can_login(self):
-        creds = register_new_courier_and_return_login_password()
-        assert creds
-        login, password, _ = creds
+    @allure.title('POST /courier/login возвращает 200 при валидных данных')
+    def test_courier_can_login(self, registered_courier):
+        with allure.step('Логинимся валидным курьером'):
+            response = requests.post(
+                LOGIN_URL,
+                json={
+                    "login": registered_courier["login"],
+                    "password": registered_courier["password"]
+                }
+            )
 
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": login, "password": password}
-        )
         assert response.status_code == 200
 
-        delete_courier(response.json().get('id'))
+    @allure.title('POST /courier/login возвращает id')
+    def test_login_returns_id(self, registered_courier):
+        with allure.step('Логинимся'):
+            response = requests.post(
+                LOGIN_URL,
+                json={
+                    "login": registered_courier["login"],
+                    "password": registered_courier["password"]
+                }
+            )
 
-    @allure.title('Успешный запрос возвращает id')
-    def test_login_returns_id(self):
-        creds = register_new_courier_and_return_login_password()
-        assert creds
-        login, password, _ = creds
-
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": login, "password": password}
-        )
         assert 'id' in response.json()
 
-        delete_courier(response.json()['id'])
-
-    @allure.title('Без поля login возвращается 400')
+    @allure.title('Без login возвращается 400')
     def test_login_without_login_field_returns_400(self):
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"password": "somepassword"}
-        )
+        with allure.step('Отправляем запрос без login'):
+            response = requests.post(
+                LOGIN_URL,
+                json={"password": "somepassword"}
+            )
+
         assert response.status_code == 400
 
-    @allure.title('Без поля password возвращается 400')
+    @allure.title('Без password возвращается 400')
     def test_login_without_password_field_returns_400(self):
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": "somelogin"}
-        )
+        with allure.step('Отправляем запрос без password'):
+            response = requests.post(
+                LOGIN_URL,
+                json={"login": "somelogin"}
+            )
+
         assert response.status_code == 400
 
-    @allure.title('При отсутствии обязательного поля возвращается текст ошибки')
+    @allure.title('Без обязательных полей возвращается ошибка')
     def test_login_without_fields_returns_error_message(self):
-        response = requests.post(
-        f'{BASE_URL}/api/v1/courier/login',
-        json={}
-    )
+        with allure.step('Отправляем пустой запрос'):
+            response = requests.post(LOGIN_URL, json={})
 
         assert response.status_code == 400
 
-        try:
-            body = response.json()
-        except ValueError:
-            pytest.fail(f"Response is not JSON: {response.text}")
+        body = response.json()
+        assert body.get('message') == ERROR_MESSAGE
 
-        assert body.get('message') == 'Недостаточно данных для входа'
+    @allure.title('Неверный пароль → 404')
+    def test_login_with_wrong_password_returns_404(self, registered_courier):
+        with allure.step('Логинимся с неправильным паролем'):
+            response = requests.post(
+                LOGIN_URL,
+                json={
+                    "login": registered_courier["login"],
+                    "password": "wrongpassword"
+                }
+            )
 
-    @allure.title('При неверном пароле возвращается 404')
-    def test_login_with_wrong_password_returns_404(self):
-        creds = register_new_courier_and_return_login_password()
-        assert creds
-        login, password, _ = creds
-
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": login, "password": "wrongpassword"}
-        )
         assert response.status_code == 404
 
-        courier_id = login_courier(login, password)
-        if courier_id:
-            delete_courier(courier_id)
-
-    @allure.title('При неверном логине возвращается 404')
+    @allure.title('Неверный логин → 404')
     def test_login_with_wrong_login_returns_404(self):
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": "nonexistentuser12345", "password": "somepassword"}
-        )
+        with allure.step('Логинимся с несуществующим логином'):
+            response = requests.post(
+                LOGIN_URL,
+                json={
+                    "login": generate_random_string(10),
+                    "password": "somepassword"
+                }
+            )
+
         assert response.status_code == 404
 
-    @allure.title('При несуществующем пользователе возвращается сообщение об ошибке')
+    @allure.title('Несуществующий пользователь → сообщение об ошибке')
     def test_login_nonexistent_courier_returns_error_message(self):
-        response = requests.post(
-            f'{BASE_URL}/api/v1/courier/login',
-            json={"login": "nonexistentuser12345", "password": "somepassword"}
-        )
+        with allure.step('Логинимся несуществующим пользователем'):
+            response = requests.post(
+                LOGIN_URL,
+                json={
+                    "login": generate_random_string(10),
+                    "password": "somepassword"
+                }
+            )
+
         assert 'message' in response.json()
