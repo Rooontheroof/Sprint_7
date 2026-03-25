@@ -53,21 +53,14 @@ cleanup_courier = []
 
 def perform_cleanup():
     for creds in cleanup_courier:
-        courier_id = login_courier(creds["login"], creds["password"])
+        courier_id = login_courier(creds["login"], creds["password"]) if "login" in creds and "password" in creds else None
         if courier_id:
             delete_courier(courier_id)
 
-def registered_courier():
-    payload = {
-        "login": generate_random_string(10),
-        "password": generate_random_string(10),
-        "firstName": generate_random_string(10)
-    }
 
-    requests.post(CREATE_URL, json=payload)
-
-    yield payload
-
-    courier_id = login_courier(payload["login"], payload["password"])
-    if courier_id:
-        delete_courier(courier_id)
+registered_courier_data = register_new_courier_and_return_login_password()
+if registered_courier_data:
+    registered_courier = {"login": registered_courier_data[0], "password": registered_courier_data[1], "firstName": registered_courier_data[2]}
+    cleanup_courier.append(registered_courier)
+else:
+    registered_courier = None
