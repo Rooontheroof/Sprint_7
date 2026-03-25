@@ -1,37 +1,15 @@
 import pytest
 import allure
 import requests
-from helpers import generate_random_string, login_courier, delete_courier
-from constants import BASE_URL
-
-
-LOGIN_URL = f"{BASE_URL}/api/v1/courier/login"
-CREATE_URL = f"{BASE_URL}/api/v1/courier"
-ERROR_MESSAGE = 'Недостаточно данных для входа'
-
-
-@pytest.fixture
-def registered_courier():
-    payload = {
-        "login": generate_random_string(10),
-        "password": generate_random_string(10),
-        "firstName": generate_random_string(10)
-    }
-
-    requests.post(CREATE_URL, json=payload)
-
-    yield payload
-
-    courier_id = login_courier(payload["login"], payload["password"])
-    if courier_id:
-        delete_courier(courier_id)
+from helpers import generate_random_string, login_courier, delete_courier, registered_courier
+from constants import BASE_URL, CREATE_URL, ERROR_MESSAGE, LOGIN_URL
 
 
 @allure.suite('Логин курьера')
 class TestLoginCourier:
 
     @allure.title('POST /courier/login возвращает 200 при валидных данных')
-    def test_courier_can_login(self, registered_courier):
+    def test_courier_can_login(self):
         with allure.step('Логинимся валидным курьером'):
             response = requests.post(
                 LOGIN_URL,
@@ -44,7 +22,7 @@ class TestLoginCourier:
         assert response.status_code == 200
 
     @allure.title('POST /courier/login возвращает id')
-    def test_login_returns_id(self, registered_courier):
+    def test_login_returns_id(self):
         with allure.step('Логинимся'):
             response = requests.post(
                 LOGIN_URL,
@@ -87,7 +65,7 @@ class TestLoginCourier:
         assert body.get('message') == ERROR_MESSAGE
 
     @allure.title('Неверный пароль → 404')
-    def test_login_with_wrong_password_returns_404(self, registered_courier):
+    def test_login_with_wrong_password_returns_404(self):
         with allure.step('Логинимся с неправильным паролем'):
             response = requests.post(
                 LOGIN_URL,

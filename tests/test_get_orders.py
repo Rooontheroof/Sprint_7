@@ -1,10 +1,7 @@
 import pytest
 import allure
 import requests
-from constants import BASE_URL
-
-
-GET_ORDERS_URL = f"{BASE_URL}/api/v1/orders"
+from constants import BASE_URL, GET_ORDERS_URL
 
 
 @allure.suite('Список заказов')
