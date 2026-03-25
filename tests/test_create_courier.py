@@ -10,49 +10,60 @@ class TestCreateCourier:
 
     @allure.title('Курьера можно создать')
     def test_create_courier_success(self):
+        payload = courier_payload()
         with allure.step('Отправляем запрос на создание курьера'):
-            response = requests.post(CREATE_COURIER_URL, json=courier_payload)
+            response = requests.post(CREATE_COURIER_URL, json=payload)
 
-        cleanup_courier.append(courier_payload)
+        cleanup_courier.append(payload)
 
         assert response.status_code == 201
         assert response.json() == {"ok": True}
 
     @allure.title('Успешный запрос возвращает 201')
     def test_create_courier_returns_201(self):
+        payload = courier_payload()
         with allure.step('Отправляем запрос'):
-            response = requests.post(CREATE_COURIER_URL, json=courier_payload)
+            response = requests.post(CREATE_COURIER_URL, json=payload)
+
+        cleanup_courier.append(payload)
 
         assert response.status_code == 201
 
     @allure.title('Успешный запрос возвращает ok true')
     def test_create_courier_returns_ok_true(self):
+        payload = courier_payload()
+
         with allure.step('Отправляем запрос'):
-            response = requests.post(CREATE_COURIER_URL, json=courier_payload)
+            response = requests.post(CREATE_COURIER_URL, json=payload)
+
+        cleanup_courier.append(payload)
 
         assert response.json() == {"ok": True}
 
     @allure.title('Нельзя создать двух курьеров с одинаковым логином')
     def test_cannot_create_duplicate_courier(self):
-        with allure.step('Создаем первого курьера'):
-            requests.post(CREATE_COURIER_URL, json=courier_payload)
+        payload = courier_payload()
 
-        cleanup_courier.append(courier_payload)
+        with allure.step('Создаем первого курьера'):
+            requests.post(CREATE_COURIER_URL, json=payload)
+
+        cleanup_courier.append(payload)
 
         with allure.step('Создаем второго курьера с тем же логином'):
-            response = requests.post(CREATE_COURIER_URL, json=courier_payload)
+            response = requests.post(CREATE_COURIER_URL, json=payload)
 
         assert response.status_code == 409
 
     @allure.title('При дублирующем логине возвращается сообщение об ошибке')
     def test_duplicate_courier_returns_error_message(self):
+        payload = courier_payload()
         with allure.step('Создаем курьера'):
-            requests.post(CREATE_COURIER_URL, json=courier_payload)
+            requests.post(CREATE_COURIER_URL, json=payload)
 
-        cleanup_courier.append(courier_payload)
+        cleanup_courier.append(payload)
 
         with allure.step('Пробуем создать дубликат'):
-            response = requests.post(CREATE_COURIER_URL, json=courier_payload)
+            response = requests.post(CREATE_COURIER_URL, json=payload)
 
         assert 'message' in response.json()
 

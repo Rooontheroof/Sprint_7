@@ -48,12 +48,11 @@ def courier_payload():
     }
 
 
-def cleanup_courier():
-    created = []
+cleanup_courier = []
 
-    yield created
 
-    for creds in created:
+def perform_cleanup():
+    for creds in cleanup_courier:
         courier_id = login_courier(creds["login"], creds["password"])
         if courier_id:
             delete_courier(courier_id)
